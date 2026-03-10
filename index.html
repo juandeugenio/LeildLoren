@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Marcenaria leildLoren | Móveis feitos à mão</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Leildloren Design</h1>
+  <p>Móveis únicos feitos à mão com acabamento impecável</p>
+</header>
+
+<nav>
+  <div class="nav-container">
+    <button class="hamburger" onclick="toggleMenu()">☰</button>
+    <ul class="nav-menu">
+      <li><button onclick="showSection('home')" class="active">Home</button></li>
+      <li><button onclick="showSection('products')">Produtos</button></li>
+      <li><button onclick="showSection('cart')" id="cart-btn" data-count="0" style="display:none;">Carrinho</button></li>
+      <li><button onclick="showSection('login')">Login</button></li>
+      <li><button onclick="showSection('signup')">Cadastro</button></li>
+      <li><button onclick="showSection('admin')" id="admin-btn" style="display:none;">Admin</button></li>
+      <li><button onclick="logout()" id="logout-btn" style="display:none;">Sair</button></li>
+    </ul>
+    <span id="user-status"></span>
+  </div>
+</nav>
+
+<main>
+  <section id="home" class="section active">
+    <h2>Bem-vindo à nossa Loja</h2>
+    <p style="text-align:center; max-width:820px; margin:0 auto; font-size:1.25rem;">
+      Cada peça é criada com dedicação, unindo tradição artesanal e design contemporâneo.<br>
+      Madeira selecionada, detalhes feitos à mão e durabilidade para gerações.
+    </p>
+  </section>
+
+  <section id="products" class="section">
+    <h2>Nossos Trabalhos</h2>
+    <div id="product-list" class="product-grid"></div>
+  </section>
+
+  <section id="cart" class="section">
+    <h2>Seu Carrinho</h2>
+    <div id="cart-list"></div>
+    <p id="cart-total">Total: R$ 0,00</p>
+    <form id="order-form">
+      <input type="email" id="order-email" placeholder="Seu e-mail para confirmação" required>
+      <button type="submit">Finalizar Pedido</button>
+    </form>
+  </section>
+
+  <section id="login" class="section">
+    <h2>Entrar na conta</h2>
+    <form id="login-form">
+      <input type="text" id="login-username" placeholder="Usuário" required autocomplete="off">
+      <input type="password" id="login-password" placeholder="Senha" required autocomplete="off">
+      <button type="submit">Entrar</button>
+    </form>
+  </section>
+
+  <section id="signup" class="section">
+    <h2>Criar conta</h2>
+    <form id="signup-form">
+      <input type="text" id="signup-username" placeholder="Escolha um usuário" required minlength="3">
+      <input type="password" id="signup-password" placeholder="Crie uma senha" required minlength="5">
+      <button type="submit">Cadastrar</button>
+    </form>
+  </section>
+
+  <section id="admin" class="section">
+    <h2>Painel Administrativo</h2>
+    <button onclick="toggleAddProduct()" style="display:block; margin:0 auto 2.2rem; padding:1.1rem 2.6rem; font-size:1.1rem; background:var(--color-accent); color:var(--color-dark); border:none; border-radius:var(--radius); cursor:pointer;">
+      + Adicionar Novo Produto
+    </button>
+
+    <form id="admin-add-product" style="display:none;">
+      <input type="text" id="product-name" placeholder="Nome do produto" required>
+      <input type="text" id="product-description" placeholder="Descrição curta" required>
+      <input type="text" id="product-price" placeholder="Preço (ex: 1.250,00)" required pattern="[\d,\.]+" title="Use ponto ou vírgula como separador decimal">
+      <input type="url" id="product-image" placeholder="URL da imagem (ex: unsplash, imgur)" required>
+      <button type="submit">Adicionar Produto</button>
+    </form>
+
+    <div id="admin-products">
+      <h3 style="text-align:center; margin:2.8rem 0 1.6rem;">Produtos cadastrados</h3>
+      <div id="admin-product-list" class="product-grid"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+// ────────────────────────────────────────────────
+// Dados persistentes
+// ────────────────────────────────────────────────
+const STORAGE_KEYS = {
+  users: 'marcenaria_users',
+  products: 'marcenaria_products',
+  cart: 'marcenaria_cart'
+};
+
+function loadData() {
+  users   = JSON.parse(localStorage.getItem(STORAGE_KEYS.users))   || [];
+  products = JSON.parse(localStorage.getItem(STORAGE_KEYS.products)) || [
+    { id: 1, name: "Sofá Loren Rústico",   desc: "Madeira Pallet resinado, 180 cm, 3 lugares",        price: 185000, img: "https://imgs.search.brave.com/6_mTemkc6wrf-oe353iSdMd2HwaUBCSOyHJkQCy-dhI/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9jYXNh/ZWNvbnN0cnVjYW8u/dml2YWRlY29yYS5j/b20uYnIvd3AtY29u/dGVudC91cGxvYWRz/LzIwMTgvMDMvQ2Ft/YS1kZS1wYWxsZXQt/Y29tLWR1YXMtY2Ft/YWRhcy5qcGc" },
+    { id: 2, name: "Aparador Delta Artesanal", desc: "Design e elegância com toque refinado", price: 78000,  img: "https://imgs.search.brave.com/cy5V3kS9YcPBqJwp8bXYRZ5L7BtI4ydmu3lp-uygwUE/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9jYXNh/Y29tcGFsbGV0LmNv/bS5ici93cC1jb250/ZW50L3VwbG9hZHMv/MjAyMi8xMi9BcGFy/YWRvci1iYW5jYWRh/LWR1cGxhLWRlLU1l/dGFsb24tY29tLVBp/bnVzLTQzMHg1NzMu/anBlZw" },
+    { id: 3, name: "Sofá Minimalista", desc: "Design limpo, com classe porém minimalista", price: 114999, img: "https://imgs.search.brave.com/0Zw1kweXnEu2fUDQk4nqR8vcsXMKlgdZnB2PiDa13R8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2FjLzRk/LzkwL2FjNGQ5MDVh/MmVkZDFhZDVlMjhm/N2NhYTVmMjBmYjcx/LmpwZw" },
+  ];
+  cart     = JSON.parse(localStorage.getItem(STORAGE_KEYS.cart))     || [];
+  nextProductId = products.length ? Math.max(...products.map(p => p.id)) + 1 : 1;
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEYS.users,   JSON.stringify(users));
+  localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(products));
+  localStorage.setItem(STORAGE_KEYS.cart,     JSON.stringify(cart));
+}
+
+// ────────────────────────────────────────────────
+// Variáveis globais
+// ────────────────────────────────────────────────
+let users = [];
+let products = [];
+let cart = [];
+let currentUser = null;
+let nextProductId = 1;
+
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'admin123';
+
+// ────────────────────────────────────────────────
+// Funções auxiliares
+// ────────────────────────────────────────────────
+function formatPrice(value) {
+  const num = Number(value.toString().replace(/\D/g,'')) / 100;
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function parsePrice(str) {
+  return Number(str.replace(/\./g,'').replace(',','.'));
+}
+
+function showMessage(text, type = 'success') {
+  const msg = document.createElement('div');
+  msg.className = `message ${type}`;
+  msg.textContent = text;
+  document.querySelector('main').prepend(msg);
+  setTimeout(() => msg.remove(), 4000);
+}
+
+function updateCartCount() {
+  const btn = document.getElementById('cart-btn');
+  if (!btn) return;
+  const count = cart.length;
+  btn.dataset.count = count > 0 ? count : '';
+  btn.style.display = currentUser ? 'inline-block' : 'none';
+}
+
+function toggleMenu() {
+  document.querySelector('.nav-menu').classList.toggle('active');
+}
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const section = document.getElementById(id);
+  if (section) {
+    section.classList.add('active');
+    if (id === 'cart') renderCart();
+    if (id === 'admin' && currentUser !== 'admin') {
+      showSection('home');
+      return;
+    }
+  }
+
+  document.querySelectorAll('.nav-menu button').forEach(b => b.classList.remove('active'));
+  const btn = [...document.querySelectorAll('.nav-menu button')].find(b => b.getAttribute('onclick')?.includes(id));
+  if (btn) btn.classList.add('active');
+}
+
+// ────────────────────────────────────────────────
+// Autenticação
+// ────────────────────────────────────────────────
+document.getElementById('login-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const user = document.getElementById('login-username').value.trim();
+  const pass = document.getElementById('login-password').value;
+
+  if (user === ADMIN_USER && pass === ADMIN_PASS) {
+    currentUser = 'admin';
+    document.getElementById('user-status').textContent = 'Admin';
+    document.getElementById('admin-btn').style.display = 'inline-block';
+    document.getElementById('logout-btn').style.display = 'inline-block';
+    updateCartCount();
+    showSection('admin');
+    showMessage('Bem-vindo, Administrador!', 'success');
+    return;
+  }
+
+  const found = users.find(u => u.username === user && u.password === pass);
+  if (found) {
+    currentUser = user;
+    document.getElementById('user-status').textContent = user;
+    document.getElementById('logout-btn').style.display = 'inline-block';
+    updateCartCount();
+    showSection('home');
+    showMessage(`Bem-vindo de volta, ${user}!`, 'success');
+  } else {
+    showMessage('Usuário ou senha incorretos.', 'error');
+  }
+});
+
+document.getElementById('signup-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const user = document.getElementById('signup-username').value.trim();
+  const pass = document.getElementById('signup-password').value;
+
+  if (users.some(u => u.username === user)) {
+    showMessage('Este usuário já está cadastrado.', 'error');
+    return;
+  }
+  if (pass.length < 5) {
+    showMessage('A senha deve ter pelo menos 5 caracteres.', 'error');
+    return;
+  }
+
+  users.push({ username: user, password: pass });
+  saveData();
+  showMessage('Conta criada com sucesso! Faça login.', 'success');
+  showSection('login');
+});
+
+function logout() {
+  currentUser = null;
+  document.getElementById('admin-btn').style.display = 'none';
+  document.getElementById('logout-btn').style.display = 'none';
+  document.getElementById('user-status').textContent = '';
+  updateCartCount();
+  showSection('home');
+  showMessage('Você saiu da conta.', 'success');
+}
+
+// ────────────────────────────────────────────────
+// Produtos – Admin
+// ────────────────────────────────────────────────
+function toggleAddProduct() {
+  const form = document.getElementById('admin-add-product');
+  form.style.display = form.style.display === 'block' ? 'none' : 'block';
+}
+
+document.getElementById('admin-add-product').addEventListener('submit', e => {
+  e.preventDefault();
+  if (currentUser !== 'admin') return;
+
+  const name  = document.getElementById('product-name').value.trim();
+  const desc  = document.getElementById('product-description').value.trim();
+  const priceStr = document.getElementById('product-price').value.trim();
+  const img   = document.getElementById('product-image').value.trim();
+
+  const price = parsePrice(priceStr);
+  if (isNaN(price) || price <= 0) {
+    showMessage('Preço inválido.', 'error');
+    return;
+  }
+
+  products.push({ id: nextProductId++, name, desc, price, img });
+  saveData();
+  renderProducts();
+  renderAdminProducts();
+  showMessage('Produto adicionado com sucesso!', 'success');
+  e.target.reset();
+  toggleAddProduct();
+});
+
+function editProduct(id) {
+  const p = products.find(p => p.id === id);
+  if (!p) return;
+
+  const name  = prompt('Nome do produto:', p.name);
+  if (name === null) return;
+  const desc  = prompt('Descrição:', p.desc);
+  if (desc === null) return;
+  const priceStr = prompt('Preço (ex: 1.250,00):', formatPrice(p.price));
+  if (priceStr === null) return;
+  const img   = prompt('URL da imagem:', p.img);
+  if (img === null) return;
+
+  const price = parsePrice(priceStr);
+  if (isNaN(price) || price <= 0) {
+    showMessage('Preço inválido.', 'error');
+    return;
+  }
+
+  p.name = name.trim();
+  p.desc = desc.trim();
+  p.price = price;
+  p.img = img.trim();
+
+  saveData();
+  renderProducts();
+  renderAdminProducts();
+  showMessage('Produto atualizado!', 'success');
+}
+
+function deleteProduct(id) {
+  if (!confirm('Deseja realmente excluir este produto?')) return;
+  products = products.filter(p => p.id !== id);
+  saveData();
+  renderProducts();
+  renderAdminProducts();
+  showMessage('Produto removido.', 'success');
+}
+
+// ────────────────────────────────────────────────
+// Renderização
+// ────────────────────────────────────────────────
+function renderProducts() {
+  const container = document.getElementById('product-list');
+  container.innerHTML = '';
+  products.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'product';
+    el.innerHTML = `
+      <img src="${p.img}" alt="${p.name}" loading="lazy">
+      <div class="product-info">
+        <h3>${p.name}</h3>
+        <p>${p.desc}</p>
+        <p class="price">R$ ${formatPrice(p.price)}</p>
+      </div>
+    `;
+    const btn = document.createElement('button');
+    btn.textContent = 'Adicionar ao Carrinho';
+    btn.onclick = () => addToCart(p.id);
+    el.querySelector('.product-info').appendChild(btn);
+    container.appendChild(el);
+  });
+}
+
+function renderAdminProducts() {
+  const container = document.getElementById('admin-product-list');
+  container.innerHTML = '';
+  products.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'product';
+    el.innerHTML = `
+      <img src="${p.img}" alt="${p.name}" loading="lazy">
+      <div class="product-info">
+        <h3>${p.name}</h3>
+        <p>${p.desc}</p>
+        <p class="price">R$ ${formatPrice(p.price)}</p>
+        <div class="admin-actions">
+          <button class="edit-btn" onclick="editProduct(${p.id})">Editar</button>
+          <button class="delete-btn" onclick="deleteProduct(${p.id})">Excluir</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(el);
+  });
+}
+
+function addToCart(productId) {
+  if (!currentUser) {
+    showMessage('Faça login para adicionar itens ao carrinho.', 'error');
+    showSection('login');
+    return;
+  }
+  const product = products.find(p => p.id === productId);
+  if (!product) return;
+  cart.push({ ...product }); // cópia para não alterar o original
+  saveData();
+  updateCartCount();
+  showMessage(`${product.name} adicionado ao carrinho!`, 'success');
+}
+
+function removeFromCart(index) {
+  cart.splice(index, 1);
+  saveData();
+  renderCart();
+  updateCartCount();
+  showMessage('Item removido do carrinho.', 'success');
+}
+
+function renderCart() {
+  const container = document.getElementById('cart-list');
+  container.innerHTML = '';
+  let total = 0;
+
+  cart.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div>
+        <strong>${p.name}</strong><br>
+        R$ ${formatPrice(p.price)}
+      </div>
+    `;
+    const btn = document.createElement('button');
+    btn.textContent = 'Remover';
+    btn.onclick = () => removeFromCart(i);
+    div.appendChild(btn);
+    container.appendChild(div);
+    total += p.price;
+  });
+
+  document.getElementById('cart-total').textContent = `Total: R$ ${formatPrice(total)}`;
+}
+
+document.getElementById('order-form').addEventListener('submit', e => {
+  e.preventDefault();
+  if (cart.length === 0) return showMessage('Seu carrinho está vazio.', 'error');
+
+  const email = document.getElementById('order-email').value.trim();
+  if (!email.includes('@')) return showMessage('E-mail inválido.', 'error');
+
+  showMessage(`Pedido realizado com sucesso!\nConfirmação enviada para: ${email}\nObrigado!`, 'success');
+  cart = [];
+  saveData();
+  renderCart();
+  updateCartCount();
+  showSection('home');
+});
+
+// ────────────────────────────────────────────────
+// Inicialização
+// ────────────────────────────────────────────────
+loadData();
+renderProducts();
+renderAdminProducts();
+updateCartCount();
+
+if (currentUser) {
+  document.getElementById('logout-btn').style.display = 'inline-block';
+  if (currentUser === 'admin') {
+    document.getElementById('admin-btn').style.display = 'inline-block';
+    document.getElementById('user-status').textContent = 'Admin';
+  } else {
+    document.getElementById('user-status').textContent = currentUser;
+  }
+}
+
+showSection('home');
+</script>
+</body>
+</html>
